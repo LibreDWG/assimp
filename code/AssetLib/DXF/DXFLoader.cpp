@@ -55,6 +55,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <assimp/scene.h>
 #include <assimp/importerdesc.h>
 
+#include <cstdlib>
 #include <numeric>
 #include <utility>
 
@@ -979,6 +980,7 @@ void DXFImporter::ParsePolyLineVertex(DXF::LineReader& reader, DXF::PolyLine& li
                     indices[cnti++] = static_cast<unsigned int>(-index);
                 }
             }
+            indices[cnti++] = std::abs(reader.ValueAsSignedInt());
             break;
 
         // color
