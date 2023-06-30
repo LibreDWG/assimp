@@ -1123,9 +1123,9 @@ void DXFImporter::Parse3DFace(DXF::LineReader& reader, DXF::FileData& output) {
 
     // the fourth corner may even be identical to the third,
     // in this case we treat it as if it didn't exist.
-    if (vip[3] == vip[2]) {
-        b[1] = false;
-    }
+    //if (vip[3] == vip[2]) { // ru: nope, accept triangles
+    //    b[1] = false;
+    //}
 
     // sanity checks to see if we got something meaningful
     if ((b[1] && !b[0]) || !b[2] || !b[3]) {
