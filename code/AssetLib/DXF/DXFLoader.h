@@ -123,6 +123,19 @@ private:
     // -----------------------------------------------------
     void Parse3DFace(DXF::LineReader& reader,
         DXF::FileData& output);
+    
+    // -----------------------------------------------------
+    // not yet implemented
+    void ParseLWPolyLine(DXF::LineReader& reader,
+        DXF::FileData& output);
+    void Parse3DSolid(DXF::LineReader& reader,
+        DXF::FileData& output);
+    void ParseMesh(DXF::LineReader& reader,
+        DXF::FileData& output);
+    void ParseSurface(DXF::LineReader& reader,
+        DXF::FileData& output);
+    void ParseAcShClass(DXF::LineReader& reader,
+        DXF::FileData& output);
 
     // -----------------------------------------------------
     void ConvertMeshes(aiScene* pScene,
