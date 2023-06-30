@@ -735,17 +735,57 @@ void DXFImporter::ParseBlock(DXF::LineReader& reader, DXF::FileData& output) {
             ParsePolyLine(++reader,output);
             continue;
         }
-
-        // XXX is this a valid case?
-        if (reader.Is(0,"INSERT")) {
+        else if (reader.Is(0,"LWPOLYLINE")) {
+            ParseLWPolyLine(++reader,output);
+            continue;
+        }
+        // valid case
+        else if (reader.Is(0,"INSERT")) {
             ASSIMP_LOG_WARN("DXF: INSERT within a BLOCK not currently supported; skipping");
-            for( ;!reader.End() && !reader.Is(0,"ENDBLK"); ++reader);
+            for( ;!reader.End() && (reader.Is(0,"ATTRIB") || reader.Is(0,"SEQEND")); ++reader);
             break;
         }
-
-        else if (reader.Is(0,"3DFACE") || reader.Is(0,"LINE") || reader.Is(0,"3DLINE")) {
+        else if (reader.Is(0,"3DFACE") || reader.Is(0,"SOLID")
+                 || reader.Is(0,"LINE") || reader.Is(0,"3DLINE")) {
             //http://sourceforge.net/tracker/index.php?func=detail&aid=2970566&group_id=226462&atid=1067632
             Parse3DFace(++reader, output);
+            continue;
+        }
+        else if (reader.Is(0,"3DSOLID") || reader.Is(0,"REGION") || reader.Is(0,"BODY")) {
+            Parse3DSolid(++reader, output);
+            continue;
+        }
+        else if (reader.Is(0,"MESH")) {
+            ParseMesh(++reader, output);
+            continue;
+        }
+        else if (reader.Is(0,"SURFACE")
+                 || reader.Is(0,"EXTRUDEDSURFACE")
+                 || reader.Is(0,"LOFTEDSURFACE")
+                 || reader.Is(0,"NURBSURFACE")
+                 || reader.Is(0,"PLANESURFACE")
+                 || reader.Is(0,"REVOLVEDSURFACE")
+                 || reader.Is(0,"SWEPTSURFACE")) {
+            ParseSurface(++reader, output);
+            continue;
+        }
+        else if (reader.Is(0,"ACSH_BOOLEAN_CLASS")
+                 || reader.Is(0,"ACSH_BOX_CLASS") // same as Wedge
+                 || reader.Is(0,"ACSH_BREP_CLASS")
+                 || reader.Is(0,"ACSH_CHAMFER_CLASS")
+                 || reader.Is(0,"ACSH_CONE_CLASS")
+                 || reader.Is(0,"ACSH_CYLINDER_CLASS")
+                 || reader.Is(0,"ACSH_EXTRUSION_CLASS")
+                 || reader.Is(0,"ACSH_FILLET_CLASS")
+                 || reader.Is(0,"ACSH_HISTORY_CLASS")
+                 || reader.Is(0,"ACSH_LOFT_CLASS")
+                 || reader.Is(0,"ACSH_PYRAMID_CLASS")
+                 || reader.Is(0,"ACSH_REVOLVE_CLASS")
+                 || reader.Is(0,"ACSH_SPHERE_CLASS")
+                 || reader.Is(0,"ACSH_SWEEP_CLASS")
+                 || reader.Is(0,"ACSH_TORUS_CLASS")
+                 || reader.Is(0,"ACSH_WEDGE_CLASS")) {
+            ParseAcShClass(++reader, output);
             continue;
         }
         ++reader;
@@ -765,18 +805,59 @@ void DXFImporter::ParseEntities(DXF::LineReader& reader, DXF::FileData& output) 
             ParsePolyLine(++reader,output);
             continue;
         }
+        else if (reader.Is(0,"LWPOLYLINE")) {
+            ParseLWPolyLine(++reader,output);
+            continue;
+        }
 
         else if (reader.Is(0,"INSERT")) {
             ParseInsertion(++reader,output);
             continue;
         }
 
-        else if (reader.Is(0,"3DFACE") || reader.Is(0,"LINE") || reader.Is(0,"3DLINE")) {
+        else if (reader.Is(0,"3DFACE") || reader.Is(0,"SOLID")
+                 || reader.Is(0,"LINE") || reader.Is(0,"3DLINE")) {
             //http://sourceforge.net/tracker/index.php?func=detail&aid=2970566&group_id=226462&atid=1067632
             Parse3DFace(++reader, output);
             continue;
         }
-
+        else if (reader.Is(0,"3DSOLID") || reader.Is(0,"REGION") || reader.Is(0,"BODY")) {
+            Parse3DSolid(++reader, output);
+            continue;
+        }
+        else if (reader.Is(0,"MESH")) {
+            ParseMesh(++reader, output);
+            continue;
+        }
+        else if (reader.Is(0,"SURFACE")
+                 || reader.Is(0,"EXTRUDEDSURFACE")
+                 || reader.Is(0,"LOFTEDSURFACE")
+                 || reader.Is(0,"NURBSURFACE")
+                 || reader.Is(0,"PLANESURFACE")
+                 || reader.Is(0,"REVOLVEDSURFACE")
+                 || reader.Is(0,"SWEPTSURFACE")) {
+            ParseSurface(++reader, output);
+            continue;
+        }
+        else if (reader.Is(0,"ACSH_BOOLEAN_CLASS")
+                 || reader.Is(0,"ACSH_BOX_CLASS")
+                 || reader.Is(0,"ACSH_BREP_CLASS")
+                 || reader.Is(0,"ACSH_CHAMFER_CLASS")
+                 || reader.Is(0,"ACSH_CONE_CLASS")
+                 || reader.Is(0,"ACSH_CYLINDER_CLASS")
+                 || reader.Is(0,"ACSH_EXTRUSION_CLASS")
+                 || reader.Is(0,"ACSH_FILLET_CLASS")
+                 || reader.Is(0,"ACSH_HISTORY_CLASS")
+                 || reader.Is(0,"ACSH_LOFT_CLASS")
+                 || reader.Is(0,"ACSH_PYRAMID_CLASS")
+                 || reader.Is(0,"ACSH_REVOLVE_CLASS")
+                 || reader.Is(0,"ACSH_SPHERE_CLASS")
+                 || reader.Is(0,"ACSH_SWEEP_CLASS")
+                 || reader.Is(0,"ACSH_TORUS_CLASS")
+                 || reader.Is(0,"ACSH_WEDGE_CLASS")) {
+            ParseAcShClass(++reader, output);
+            continue;
+        }
         ++reader;
     }
 
@@ -828,8 +909,12 @@ void DXFImporter::ParseInsertion(DXF::LineReader& reader, DXF::FileData& output)
 
 static constexpr unsigned int DXF_POLYLINE_FLAG_CLOSED = 0x1;
 // Currently unused
+//static constexpr unsigned int DXF_POLYLINE_FLAG_CURVE_FIT = 0x2;
+//static constexpr unsigned int DXF_POLYLINE_FLAG_SPLINE_FIT = 0x4;
 //static constexpr unsigned int DXF_POLYLINE_FLAG_3D_POLYLINE = 0x8;
 //static constexpr unsigned int DXF_POLYLINE_FLAG_3D_POLYMESH = 0x10;
+//static constexpr unsigned int DXF_POLYLINE_FLAG_MESH_CLOSED_IN_N = 0x20;
+//static constexpr unsigned int DXF_POLYLINE_FLAG_LTYPE_CONTINUOUS = 0x80;
 static constexpr unsigned int DXF_POLYLINE_FLAG_POLYFACEMESH = 0x40;
 
 // ------------------------------------------------------------------------------------------------
@@ -1131,7 +1216,7 @@ void DXFImporter::Parse3DFace(DXF::LineReader& reader, DXF::FileData& output) {
 
     // sanity checks to see if we got something meaningful
     if ((b[1] && !b[0]) || !b[2] || !b[3]) {
-        ASSIMP_LOG_WARN("DXF: unexpected vertex setup in 3DFACE/LINE/FACE entity; ignoring");
+        ASSIMP_LOG_WARN("DXF: unexpected vertex setup in 3DFACE/LINE/SOLID entity; ignoring");
         output.blocks.back().lines.pop_back();
         return;
     }
@@ -1144,6 +1229,27 @@ void DXFImporter::Parse3DFace(DXF::LineReader& reader, DXF::FileData& output) {
         line.positions.push_back(vip[i]);
         line.colors.push_back(clr);
     }
+}
+
+void ParseLWPolyLine(DXF::LineReader& /*reader*/, DXF::FileData& /*output*/)
+{
+    ASSIMP_LOG_WARN("DXF: LWPolyLine not currently supported; ignoring");
+}
+void Parse3DSolid(DXF::LineReader& /*reader*/, DXF::FileData& /*output*/)
+{
+    ASSIMP_LOG_WARN("DXF: 3DSOLID not currently supported; ignoring");
+}
+void ParseMesh(DXF::LineReader& /*reader*/, DXF::FileData& /*output*/)
+{
+    ASSIMP_LOG_WARN("DXF: MESH not currently supported; ignoring");
+}
+void ParseSurface(DXF::LineReader& /*reader*/, DXF::FileData& /*output*/)
+{
+    ASSIMP_LOG_WARN("DXF: Surface not currently supported; ignoring");
+}
+void ParseAcShClass(DXF::LineReader& /*reader*/, DXF::FileData& /*output*/)
+{
+    ASSIMP_LOG_WARN("DXF: AcShClass not currently supported; ignoring");
 }
 
 #endif // !! ASSIMP_BUILD_NO_DXF_IMPORTER
